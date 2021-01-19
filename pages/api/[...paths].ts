@@ -1,39 +1,39 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
-const crypto = require('crypto');
+// const crypto = require('crypto');
 
-function verifySignature(request, secret = process.env.SENTRY_KEY || '') {
-  const hmac = crypto.createHmac('sha256', secret);
-  hmac.update(JSON.stringify(request.body), 'utf8');
-  const digest = hmac.digest('hex');
-  return digest === request.headers['Sentry-Hook-Signature'];
-}
+// function verifySignature(request, secret = process.env.SENTRY_KEY || '') {
+//   const hmac = crypto.createHmac('sha256', secret);
+//   hmac.update(JSON.stringify(request.body), 'utf8');
+//   const digest = hmac.digest('hex');
+//   return digest === request.headers['Sentry-Hook-Signature'];
+// }
 
 const parseBody = (request): SentryPayload => JSON.parse(request.body);
 
 export default async (req: NextApiRequest, res: NextApiResponse) => {
   try {
-    const valid =
-      process.env.NODE_ENV === 'development' || verifySignature(req);
-    if (!valid) {
-      throw new Error('Request is not valid');
+    // const valid =
+    //   process.env.NODE_ENV === 'development' || verifySignature(req);
+    // if (!valid) {
+    //   throw new Error('Request is not valid');
+    // } else {
+    const body = parseBody(req);
+    const paths = req.query.paths;
+    const path = typeof paths === 'string' ? paths : paths?.join?.('/');
+    const result = await fetch(`https://hooks.slack.com/services/${path}`, {
+      method: 'POST',
+      body: JSON.stringify({
+        text: `${body.message}, <${body.url}|${body.culprit}> `,
+      }),
+    });
+    if (result.ok) {
+      res.status(200).json(await result.json());
     } else {
-      const body = parseBody(req);
-      const paths = req.query.paths;
-      const path = typeof paths === 'string' ? paths : paths?.join?.('/');
-      const result = await fetch(`https://hooks.slack.com/services/${path}`, {
-        method: 'POST',
-        body: JSON.stringify({
-          text: `${body.message}, <${body.url}|${body.culprit}> `,
-        }),
-      });
-      if (result.ok) {
-        res.status(200).json(await result.json());
-      } else {
-        throw new Error(await result.text());
-      }
+      throw new Error(await result.text());
     }
+    // }
   } catch (error) {
     console.error(error);
     res.status(400).json({ error });
