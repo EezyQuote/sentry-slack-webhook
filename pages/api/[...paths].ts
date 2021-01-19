@@ -32,7 +32,9 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
     const result = await fetch(`https://hooks.slack.com/services/${path}`, {
       method: 'POST',
       body: JSON.stringify({
-        text: `${body.message}, <${body.url}|${body.culprit}> `,
+        text: `[${body.event.environment}]: <${body.url}|${
+          body.event.title
+        }> | ${JSON.stringify(body.event.metadata, null, 2)} `,
       }),
     });
     res.status(200).json({ ok: true });
