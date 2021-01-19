@@ -10,7 +10,13 @@ import { NextApiRequest, NextApiResponse } from 'next';
 //   return digest === request.headers['Sentry-Hook-Signature'];
 // }
 
-const parseBody = (request): SentryPayload => JSON.parse(request.body);
+const parseBody = (request): SentryPayload => {
+  try {
+    return JSON.parse(request.body);
+  } catch (error) {
+    return request.body;
+  }
+};
 
 export default async (req: NextApiRequest, res: NextApiResponse) => {
   try {
@@ -20,6 +26,7 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
     //   throw new Error('Request is not valid');
     // } else {
     const body = parseBody(req);
+    console.log(body);
     const paths = req.query.paths;
     const path = typeof paths === 'string' ? paths : paths?.join?.('/');
     const result = await fetch(`https://hooks.slack.com/services/${path}`, {
@@ -28,14 +35,10 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
         text: `${body.message}, <${body.url}|${body.culprit}> `,
       }),
     });
-    if (result.ok) {
-      res.status(200).json(await result.json());
-    } else {
-      throw new Error(await result.text());
-    }
+    res.status(200).json({ ok: true });
     // }
   } catch (error) {
     console.error(error);
-    res.status(400).json({ error });
+    res.status(400).json({ error: error.message || 'api error' });
   }
 };
